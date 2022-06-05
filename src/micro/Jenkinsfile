@@ -1,0 +1,67 @@
+pipeline {
+    agent {
+      node {
+        label "$NODE_LABEL"
+      }
+    }
+    /*parameters {
+        string(name:'TAG_NAME',defaultValue: '3.0.0',description:'docker image tag')
+        string(name:'APP_NAME',defaultValue: 'pkc-mobile-web',description:'docker image name')
+        string(name:'NODE_LABEL',defaultValue: 'gw12',description:'jenkins slave node match label')
+        string(name:'IS_DEPLOY',defaultValue: 'true',description:'whether deploy or not')
+
+        string(name:'REGISTRY',defaultValue: '172.16.86.15:5000',description:'docker registry')
+        string(name:'DOCKER_FILE_PATH',defaultValue: 'Dockerfile',description:'docker file path')
+        string(name:'HOST_PORT',defaultValue: '9004',description:'docker file path')
+        string(name:'DOCKER_PORT',defaultValue: '9004',description:'docker file path')
+
+        
+        gitParameter(name:'BRANCH_TAG',type:'PT_BRANCH_TAG',defaultValue:'master',description: 'select git branch or tag')
+        
+    }*/
+    environment {
+        DOCKER_CREDENTIAL_ID = 'user_for_docker_registry'
+        DOCKERHUB_NAMESPACE = 'cestc'
+        DOCKER_BUILD_PATH = '.'
+    }
+    stages {
+        stage('npm Build') {
+            steps {
+                echo 'npm Building..'
+                sh '''
+                echo "`pwd`"
+                source /home/jenkins/.nvm/nvm.sh
+                rm -rf node_modules/
+                nvm use v12.18.3
+                npm -v
+                cnpm install
+                npm run build
+                '''
+            }
+        }
+        stage('Docker build') {
+            steps {
+                echo 'Docker build'
+                withCredentials([usernamePassword(credentialsId: "$DOCKER_CREDENTIAL_ID", passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                    sh 'echo "$DOCKER_PASSWORD" | sudo docker login $REGISTRY -u "$DOCKER_USERNAME" --password-stdin'
+                    sh '''
+                    containerid=`sudo docker ps -a | grep -w $APP_NAME | awk '{print $1}'`
+                    if [ -n "$containerid" ];then `sudo docker rm -f "$containerid" > /dev/null 2>&1`;fi
+                    imageid=`sudo docker images | grep -w $DOCKERHUB_NAMESPACE/$APP_NAME | awk '{print $3}'`
+                    if [ -n "$imageid" ];then `sudo docker rmi --force "$imageid" > /dev/null 2>&1`;fi
+                    sudo docker build -t $DOCKERHUB_NAMESPACE/$APP_NAME:$TAG_NAME -f $DOCKER_FILE_PATH $DOCKER_BUILD_PATH
+                    '''
+                }
+            }
+        }
+        stage('Deploy') {
+            when { environment name: 'IS_DEPLOY', value: 'true' }
+            steps {
+                echo 'Deploying....'
+                sh 'sudo docker run -itd -p $HOST_PORT:$DOCKER_PORT \
+                        --name $APP_NAME $DOCKERHUB_NAMESPACE/$APP_NAME:$TAG_NAME'
+
+            }
+        }
+    }
+}

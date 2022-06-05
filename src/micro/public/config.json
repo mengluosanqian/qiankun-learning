@@ -1,0 +1,22 @@
+{
+  "isUse": false,
+  "rules": [
+    {
+      "prefix": "/(pkc|execute|gateway|flow|es|permission|file-storage)/",
+      "target": "http://172.16.86.14:9000"
+    },
+    {
+      "prefix": "/cas/",
+      "target": "http://172.16.86.14:9105"
+    },
+    {
+      "prefix": "/group1/M00",
+      "target": "http://172.16.86.14:9888"
+    },
+    {
+      "prefix": "/authPlatform/",
+      "target": "http://47.92.196.237:88",
+      "pathRewrite": { "^/authPlatform": "" }
+    }
+  ]
+}
