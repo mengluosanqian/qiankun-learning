@@ -1,0 +1,11 @@
+FROM nginx:latest
+LABEL maintainer="wangpingping"
+
+ADD ./nginx-config/pkc-yunban-ys.conf /etc/nginx/conf.d/
+ADD ./nginx-config/nginx.conf /etc/nginx/
+
+# 拷贝文件到镜像
+ADD ./dist /home/pkc/dist
+
+#导出端口
+EXPOSE 8989
